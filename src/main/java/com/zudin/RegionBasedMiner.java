@@ -1,6 +1,8 @@
 package com.zudin;
 
 import org.apache.commons.collections.map.MultiValueMap;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
@@ -10,8 +12,7 @@ import org.apache.hadoop.io.Text;
 //import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapred.*;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -19,24 +20,50 @@ import java.util.*;
  * Date: 13.04.14
  */
 public class RegionBasedMiner {
-    //public static HashMap<Integer, ArrayList<int[]>> solutionsById = new HashMap<Integer, ArrayList<int[]>>();
-    static ArrayList<LogCase> cases = new ArrayList<LogCase>();
-    static PetriNet net = PetriNet.getInstance();
-    static int length = 4;
+    private static ArrayList<LogCase> cases = new ArrayList<LogCase>();
+    private static PetriNet net = PetriNet.getInstance();
 
     public static void main(String... args) throws Exception {
+        if (args.length == 0) {
+            System.out.println("[ERROR] Paths isn't set.\n" +
+                    "Example of using: hadoop jar RBM.jar input [output]\n" +
+                    "\tinput - input path (/logs/temp.log)\n" +
+                    "\toutput - output path (/results/temp1.txt)");
+            System.exit(1);
+        }
+        String inputLogPath = "";// = "/logs/demo2.txt";
+        String outputLogPath = "";// = "/Users/vaultboy/Dropbox/Study/CW3/new/data/result2";
+        if (args.length == 1) {
+            inputLogPath = args[0];
+            outputLogPath = "/RBM_results/run" + System.currentTimeMillis() + "";
+            System.out.println("[INFO] Results will be saved in \"" + outputLogPath + "\"");
+        }
+        if (args.length == 2) {
+            inputLogPath = args[0];
+            outputLogPath = args[1];
+        }
+        Configuration conf = new Configuration();
+        FileSystem fs = FileSystem.get(conf);
+        Path input = new Path(inputLogPath);
+        Path output = new Path(outputLogPath);
+        if (!fs.exists(input)) {
+            System.out.println("[ERROR] Input file (" + inputLogPath + ") doesn't exist");
+        }
+        if (fs.exists(output)) {
+            outputLogPath = "/RBM_results/run" + System.currentTimeMillis() + "";
+            output = new Path(outputLogPath);
+            System.out.println("[WARN] Output directory already exist. Results will be saved in " + outputLogPath + "\"");
+        }
 
-        String inputLogPath = "/Users/vaultboy/Dropbox/Study/CW3/new/data/demo2.txt";
-        String outputLogPath = "/Users/vaultboy/Dropbox/Study/CW3/new/data/result2";
-        JobClient.runJob(runLogParseJob(inputLogPath, outputLogPath));
-        BufferedReader br = new BufferedReader(new FileReader(outputLogPath + "/part-00000"));
+        JobClient.runJob(runLogParseJob(input, output));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(fs.open(new Path(outputLogPath + "/part-00000"))));
         String line;
-        while ((line = br.readLine()) != null) {
+        while ((line = reader.readLine()) != null) {
             String[] arr = line.split("\t");
             cases.add(new LogCase(Integer.parseInt(arr[0]), arr[1]));
             net.addSequence(arr[1]);
         }
-        br.close();
+        reader.close();
 
 
         LogCase result = cases.get(0).mergeSolutions(cases.get(1));
@@ -151,6 +178,11 @@ public class RegionBasedMiner {
         net.addPlace(LogCase.getFinalPlace(cases));
         net.makeSafe();
         System.out.println(net);
+        Path resFile = new Path(outputLogPath + "/result_net.txt");
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fs.create(resFile, true)));
+        writer.write(net.toString());
+        writer.close();
+
     }
 
     private static ArrayList<Integer> getIndexesOfOnes(int[] arr) {
@@ -163,12 +195,12 @@ public class RegionBasedMiner {
         return result;
     }
 
-    private static JobConf runLogParseJob(String inputPath, String outputPath) throws Exception {
+    private static JobConf runLogParseJob(Path inputPath, Path outputPath) {
         JobConf job = new JobConf();
         job.setJarByClass(RegionBasedMiner.class);
         job.setJobName("RBM Log Parser");
-        FileInputFormat.addInputPath(job, new Path(inputPath));
-        FileOutputFormat.setOutputPath(job, new Path(outputPath));
+        FileInputFormat.addInputPath(job, inputPath);
+        FileOutputFormat.setOutputPath(job, outputPath);
         job.setMapperClass(LogMapper.class);
         job.setReducerClass(LogReducer.class);
         job.setOutputKeyClass(IntWritable.class);

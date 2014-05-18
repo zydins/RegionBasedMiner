@@ -3,6 +3,7 @@ package com.zudin;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.GregorianCalendar;
 
 /**
  * Sergey Zudin
@@ -18,8 +19,8 @@ public class TestClass {
 //        for (int[] a : res) {
 //            System.out.println("[" + a[0] + ", " + a[1] + ", " + a[2] + ", " + a[3] + ", " + a[4] + ", " + a[5] + "]");
 //        }
-        ArrayList<String> list = new ArrayList<String>(){{ add("1"); add("2"); }};
-        System.out.println(list.contains("1"));
+        //ArrayList<String> list = new ArrayList<String>(){{ add("1"); add("2"); }};
+        System.out.println(new GregorianCalendar().getTimeInMillis());
     }
 
     /**
