@@ -7,6 +7,7 @@
     <groupId>RegionBasedMiner</groupId>
     <artifactId>RegionBasedMiner</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
 
     <properties>
         <mahout.version>0.8</mahout.version>
@@ -24,6 +25,19 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>com.zudin.RegionBasedMiner</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -82,94 +96,7 @@
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>profile-buildthrift-linux</id>
-            <activation>
-                <file>
-                    <exists>/usr/local/bin/thrift</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-sources</id>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <tasks>
-                                        <mkdir dir="target/generated"/>
-                                        <mkdir dir="src/main/java/mia/classifier/ch16/generated"/>
-                                        <exec executable="/usr/local/bin/thrift">
-                                            <arg value="--gen"/>
-                                            <arg value="java"/>
-                                            <arg value="-o"/>
-                                            <arg value="target/generated"/>
-                                            <arg value="src/main/thrift/ch16.thrift"/>
-                                        </exec>
-                                        <delete>
-                                            <fileset dir="src/main/java/mia/classifier/ch16/generated" includes="**/*"/>
-                                        </delete>
-                                        <copy todir="src/main/java/mia/classifier/ch16/generated">
-                                            <fileset dir="target/generated/gen-java/mia/classifier/ch16/generated"/>
-                                        </copy>
-                                    </tasks>
-                                </configuration>
-                                <goals>
-                                    <goal>run</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>profile-buildthrift-macports</id>
-            <activation>
-                <file>
-                    <exists>/opt/local/bin/thrift</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-sources</id>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <tasks>
-                                        <mkdir dir="target/generated"/>
-                                        <mkdir dir="src/main/java/mia/classifier/ch16/generated"/>
-                                        <exec executable="/opt/local/bin/thrift">
-                                            <arg value="--gen"/>
-                                            <arg value="java"/>
-                                            <arg value="-o"/>
-                                            <arg value="target/generated"/>
-                                            <arg value="src/main/thrift/ch16.thrift"/>
-                                        </exec>
-                                        <delete>
-                                            <fileset dir="src/main/java/mia/classifier/ch16/generated" includes="**/*"/>
-                                        </delete>
-                                        <copy todir="src/main/java/mia/classifier/ch16/generated">
-                                            <fileset dir="target/generated/gen-java/mia/classifier/ch16/generated"/>
-                                        </copy>
-                                    </tasks>
-                                </configuration>
-                                <goals>
-                                    <goal>run</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+
 
     <dependencies>
         <dependency>
@@ -220,11 +147,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
             <version>1.5.11</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>zookeeper</artifactId>
-            <version>3.3.1</version>
         </dependency>
         <dependency>
             <groupId>org.twitter4j</groupId>

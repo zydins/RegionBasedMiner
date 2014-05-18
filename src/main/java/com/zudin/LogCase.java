@@ -6,7 +6,7 @@ import java.util.*;
  * Sergey Zudin
  * Date: 15.04.14
  */
-public class LogCase {
+public class LogCase{
     private static int idCounter = 0;
 
     private List<int[]> solutions;
@@ -14,11 +14,12 @@ public class LogCase {
     private Set<LogCase> parents = new HashSet<LogCase>();
     private int id;
 
-    public LogCase(int id, String activities, int solutions) {
+    public LogCase(int id, String activities/*, int solutions*/) {
         this.id = id;
         if (id > idCounter) idCounter = id;
         this.activities = transformActivities(activities);
-        setSolutions(getSolutions(solutions));
+        int num = activities.split(";").length;
+        setSolutions(getSolutions(num));
     }
 
     public LogCase(List<String> activities, List<int[]> solutions, Set<LogCase> parents) {
@@ -30,11 +31,6 @@ public class LogCase {
 
     @Override
     public String toString() {
-//        StringBuilder sb = new StringBuilder();
-//        for (String activity : activities) {
-//            sb.append(activity);
-//        }
-//        sb.toString();
         String result = "ID: " + id + ":\n[ ";
         for (String act : activities) {
             result += act + " ";
@@ -54,15 +50,15 @@ public class LogCase {
         solutions = Methods.deepCopy(list);
     }
 
-    public ArrayList<int[]> getSolutions() {
+    public List<int[]> getSolutions() {
         return Methods.deepCopy(solutions);
     }
 
-    public ArrayList<String> getActivities() {
+    public List<String> getActivities() {
         return new ArrayList<String>(activities);
     }
 
-    public HashSet<LogCase> getParents() {
+    public Set<LogCase> getParents() {
         return new HashSet<LogCase>(parents);
     }
 
@@ -92,10 +88,10 @@ public class LogCase {
         if (this.activities.equals(anotherCase.activities)) {
             return this;
         }
-        ArrayList<ArrayList<Integer>> equalActivitiesIndexes = new ArrayList<ArrayList<Integer>>();
+        List<ArrayList<Integer>> equalActivitiesIndexes = new ArrayList<ArrayList<Integer>>();
         equalActivitiesIndexes.add(new ArrayList<Integer>());
         equalActivitiesIndexes.add(new ArrayList<Integer>());
-        ArrayList<String> equalActivitiesNames = new ArrayList<String>();
+        List<String> equalActivitiesNames = new ArrayList<String>();
         for (int i = 0; i < this.activities.size(); i++) {
             for (int j = 0; j < anotherCase.activities.size(); j++) {
                 if (this.activities.get(i).equals(anotherCase.activities.get(j))) { //if same activity is found
@@ -105,10 +101,10 @@ public class LogCase {
                 }
             }
         }
-        ArrayList<String> notEqualActivities = new ArrayList<String>(anotherCase.activities);
+        List<String> notEqualActivities = new ArrayList<String>(anotherCase.activities);
         notEqualActivities.removeAll(equalActivitiesNames);
         //2.Find unique combinations and create merged solutions
-        ArrayList<int[]> merdgedSolutions = new ArrayList<int[]>();
+        List<int[]> merdgedSolutions = new ArrayList<int[]>();
         for (int i = 0; i < this.solutions.size(); i++) {
             int[] combination = new int[equalActivitiesIndexes.get(0).size()]; //combination in this case
             for (int j = 0; j < equalActivitiesIndexes.get(0).size(); j++) {
@@ -136,7 +132,7 @@ public class LogCase {
             }
         }
         //3. Create new list of activities
-        ArrayList<String> newActivities = new ArrayList<String>();
+        List<String> newActivities = new ArrayList<String>();
         Set<LogCase> newParents = new HashSet<LogCase>();
         if (this.parents.isEmpty()) {
             newParents.add(this);
@@ -151,11 +147,9 @@ public class LogCase {
         int m;
         for (m = 0; m < this.activities.size(); m++) {
             newActivities.add(this.activities.get(m));
-//            newParents.add(this);
         }
         for (int l = 0; l < notEqualActivities.size(); l++) {
             newActivities.add(notEqualActivities.get(l));
-//            newParents.add(anotherCase);
         }
         return new LogCase(newActivities, merdgedSolutions, newParents/*, this, anotherCase*/);
     }
@@ -220,23 +214,17 @@ public class LogCase {
                         Methods.addToAll(tempList, i * 2, 0, 1);
                         break;
                     case 0:
-                        ArrayList<int[]> anotherTempList = Methods.deepCopy(tempList);
+                        List<int[]> anotherTempList = Methods.deepCopy(tempList);
                         Methods.addToAll(tempList, i * 2, 0, 0);
                         Methods.addToAll(anotherTempList, i * 2, 1, 1);
                         tempList.addAll(anotherTempList);
                         break;
                 }
             }
-            //12.05
-            //no more than number of variables
-//            for (int[] arr : tempList) {
-//                int num = Methods.sumOfArrElem(arr);
-//                if (num > 1 && num <= variables) {
-//                    variablesValues.add(arr);
-//                }
-//            }
             variablesValues.addAll(tempList);
         }
         return variablesValues;
     }
+
+
 }

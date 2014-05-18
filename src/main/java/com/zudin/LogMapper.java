@@ -3,7 +3,10 @@ package com.zudin;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapred.MapReduceBase;
+import org.apache.hadoop.mapred.Mapper;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.Reporter;
 
 import java.io.IOException;
 
@@ -11,11 +14,11 @@ import java.io.IOException;
  * Sergey Zudin
  * Date: 13.04.14
  */
-public class LogMapper extends Mapper<LongWritable, Text, IntWritable, Text> {
 
+public class LogMapper extends MapReduceBase
+        implements Mapper<LongWritable, Text, IntWritable, Text> {
     @Override
-    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-        //Test input - "case_id activity_name", but actually we can parse string as we want
+    public void map(LongWritable key, Text value, OutputCollector<IntWritable, Text> output, Reporter reporter) throws IOException {
         String[] data = value.toString().split(" ");
         int id = Integer.parseInt(data[data.length - 1]);
         StringBuilder buff = new StringBuilder();
@@ -23,6 +26,6 @@ public class LogMapper extends Mapper<LongWritable, Text, IntWritable, Text> {
             buff.append(data[i]);
             buff.append(" ");
         }
-        context.write(new IntWritable(id), new Text(buff.toString()));
+        output.collect(new IntWritable(id), new Text(buff.toString()));
     }
 }

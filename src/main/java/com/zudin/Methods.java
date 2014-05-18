@@ -22,27 +22,32 @@ public class Methods {
         return res;
     }
 
-    public static void addToAll(ArrayList<int[]> list, int index, int a1, int a2) {
+    /**
+     * Set to all integer arrays, given in List, values a1 and a2 from given index
+     * @param list list with integer arrays
+     * @param index start index
+     * @param a1 first value
+     * @param a2 second value
+     */
+    public static void addToAll(List<int[]> list, int index, int a1, int a2) {
         for (int[] aList : list) {
             aList[index] = a1;
             aList[index + 1] = a2;
         }
     }
 
-    public static ArrayList<int[]> deepCopy(List<int[]> original) {
-        ArrayList<int[]> clone = new ArrayList<int[]>();
+    /**
+     * Deep copy of list of integer arrays
+     * @param original original list
+     * @return clone list
+     */
+    public static List<int[]> deepCopy(List<int[]> original) {
+        List<int[]> clone = new ArrayList<int[]>();
         for (int[] arr : original) {
             clone.add(arr.clone());
         }
         return clone;
     }
 
-//    public static boolean isInner(int[] inner, int[] outer) {
-//        for (int i = 0; i < inner.length; i++) {
-//            if (inner[i] == 1 && outer[i] == 0) {
-//                return false;
-//            }
-//        }
-//        return true;
-//    }
+
 }

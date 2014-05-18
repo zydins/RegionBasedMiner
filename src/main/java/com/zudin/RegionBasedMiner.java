@@ -3,11 +3,15 @@ package com.zudin;
 import org.apache.commons.collections.map.MultiValueMap;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+//import org.apache.hadoop.mapreduce.Job;
+//import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+//import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapred.*;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.*;
 
 /**
@@ -21,14 +25,20 @@ public class RegionBasedMiner {
     static int length = 4;
 
     public static void main(String... args) throws Exception {
+
         String inputLogPath = "/Users/vaultboy/Dropbox/Study/CW3/new/data/demo2.txt";
         String outputLogPath = "/Users/vaultboy/Dropbox/Study/CW3/new/data/result2";
-        //parse log into cases
-        boolean resultLogParse = runLogParseJob(inputLogPath, outputLogPath);
-        if (!resultLogParse) {
-            //error
-            System.exit(1);
+        JobClient.runJob(runLogParseJob(inputLogPath, outputLogPath));
+        BufferedReader br = new BufferedReader(new FileReader(outputLogPath + "/part-00000"));
+        String line;
+        while ((line = br.readLine()) != null) {
+            String[] arr = line.split("\t");
+            cases.add(new LogCase(Integer.parseInt(arr[0]), arr[1]));
+            net.addSequence(arr[1]);
         }
+        br.close();
+
+
         LogCase result = cases.get(0).mergeSolutions(cases.get(1));
         for (int i = 2; i < cases.size(); i++) {
             result = result.mergeSolutions(cases.get(i));
@@ -42,8 +52,8 @@ public class RegionBasedMiner {
             if (Methods.sumOfArrElem(arr) > 1 /*&& Methods.sumOfArrElem(arr) <= length*/) { //there max length of possible log
                 if (arr[0] != 1) { //Условие 1. Ограничение на стартовый регион
                     //Condition 2. Usual place must contain in (x) and out (y) transitions
-                    ArrayList<Integer> enabledActivitiesIndexes = getIndexesOfOnes(arr);
-                    ArrayList<String> enabledActivitiesNames = new ArrayList<String>();
+                    List<Integer> enabledActivitiesIndexes = getIndexesOfOnes(arr);
+                    List<String> enabledActivitiesNames = new ArrayList<String>();
                     String activity = result.getActivities().get(enabledActivitiesIndexes.get(0));
                     int check = activity.startsWith("x")?1:2;
                     enabledActivitiesNames.add(activity);
@@ -64,7 +74,7 @@ public class RegionBasedMiner {
                         System.out.print('1');
                     }
 
-                    HashSet<LogCase> parents = result.getParents();
+                    Set<LogCase> parents = result.getParents();
                     MultiValueMap map = new MultiValueMap();
                     MultiValueMap mapNames = new MultiValueMap();
 //                    HashMap<String, ArrayList<int[]>> map = new HashMap<String, ArrayList<int[]>>();
@@ -72,7 +82,7 @@ public class RegionBasedMiner {
                     boolean redundance = false;
                     Collections.sort(enabledActivitiesNames);
                     for (LogCase parent : parents) {     //adb????
-                        ArrayList<String> parAct = new ArrayList<String>(parent.getActivities());
+                        List<String> parAct = new ArrayList<String>(parent.getActivities());
                         parAct.retainAll(enabledActivitiesNames);
 //                        Collections.sort(enabledActivitiesNames);
                         if (parAct.equals(enabledActivitiesNames)) { //полное совпадение
@@ -153,8 +163,8 @@ public class RegionBasedMiner {
         return result;
     }
 
-    private static boolean runLogParseJob(String inputPath, String outputPath) throws Exception {
-        Job job = new Job();
+    private static JobConf runLogParseJob(String inputPath, String outputPath) throws Exception {
+        JobConf job = new JobConf();
         job.setJarByClass(RegionBasedMiner.class);
         job.setJobName("RBM Log Parser");
         FileInputFormat.addInputPath(job, new Path(inputPath));
@@ -163,6 +173,6 @@ public class RegionBasedMiner {
         job.setReducerClass(LogReducer.class);
         job.setOutputKeyClass(IntWritable.class);
         job.setOutputValueClass(Text.class);
-        return job.waitForCompletion(true);
+        return job;
     }
 }
