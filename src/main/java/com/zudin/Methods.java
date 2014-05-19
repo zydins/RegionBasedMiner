@@ -49,5 +49,14 @@ public class Methods {
         return clone;
     }
 
+    public static ArrayList<Integer> getIndexesOfOnes(int[] arr) {
+        ArrayList<Integer> result = new ArrayList<Integer>();
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] == 1) {
+                result.add(i);
+            }
+        }
+        return result;
+    }
 
 }
