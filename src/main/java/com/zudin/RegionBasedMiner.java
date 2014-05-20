@@ -12,6 +12,10 @@ import org.apache.hadoop.io.Text;
 //import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapred.*;
 
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.util.*;
 
@@ -46,6 +50,11 @@ public class RegionBasedMiner {
         net.makeSafe();
         System.out.println(net);
         writeResults(fs, net);
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        DOMSource source = net.getXml();
+        StreamResult streamResult = new StreamResult(new File("/Users/vaultboy/text.pflow"));
+        transformer.transform(source, streamResult);
     }
 
     private static JobConf runLogParseJob(Path inputPath, Path outputPath) {

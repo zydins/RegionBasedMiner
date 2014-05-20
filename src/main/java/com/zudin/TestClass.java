@@ -20,7 +20,7 @@ public class TestClass {
 //            System.out.println("[" + a[0] + ", " + a[1] + ", " + a[2] + ", " + a[3] + ", " + a[4] + ", " + a[5] + "]");
 //        }
         //ArrayList<String> list = new ArrayList<String>(){{ add("1"); add("2"); }};
-        System.out.println(new GregorianCalendar().getTimeInMillis());
+        System.out.println(Integer.parseInt("p1".split("p")[0]));
     }
 
     /**

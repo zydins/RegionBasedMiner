@@ -1,7 +1,13 @@
 package com.zudin;
 
 import org.apache.commons.collections.map.MultiValueMap;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.dom.DOMSource;
 import java.util.*;
 
 /**
@@ -18,6 +24,11 @@ public class PetriNet {
     private List<String[]> sequences = new ArrayList<String[]>();
 
     /**
+     * Private constructor for singleton
+     */
+    private PetriNet() {}
+
+    /**
      * Method, that returns the only instance of PetriNet class
      * @return instance of PetriNet class
      */
@@ -28,11 +39,18 @@ public class PetriNet {
         return instance;
     }
 
-    /**
-     * Private constructor for singleton
-     */
-    private PetriNet() {}
 
+    public int getNumOfActivities() {
+        Set<String> set = new HashSet<String>();
+        for (String[] arr : sequences) {
+            Collections.addAll(set, arr);
+        }
+        return set.size();
+    }
+
+    public void addSequence(String sequence) {
+        sequences.add(sequence.split(";"));
+    }
 
     /**
      * Adds new place in Petri net
@@ -58,42 +76,44 @@ public class PetriNet {
         places.add(place);
     }
 
+    private void deletePlace(Place place) {
+        for (Transition transition : place.getIn()) {
+            transition.removePlace(place);
+        }
+        for (Transition transition : place.getOut()) {
+            transition.removePlace(place);
+        }
+        places.remove(place);
+    }
+
     /**
      * Make Petri net safe
      */
     public void makeSafe() {
-        //checkForValid();
-//        checkForCycles();
-//        Place errorPlace = checkSequence();
-//        while (errorPlace != null) {
-//            //нужна проверка на пустой переход
-////            boolean connectedWithStart = false;
-////            for (Transition transition : start.getOut()) {
-////                if (errorPlace.getIn().contains(transition)) {
-////                    transition.removePlace(errorPlace);
-////                    errorPlace.removeTransition(transition);
-////                    connectedWithStart = true;
-////                }
-////            }
-////            if (!connectedWithStart) {
-//                deletePlace(errorPlace);
-////            }
-//            errorPlace = checkSequence();
-//        }
         checkForSafety();
         checkForRedundance();
     }
 
+    private List<Transition> getTransitionsToExecute(Set<Place> set) {
+        Set<Transition> toExecute = new HashSet<Transition>();
+        for (Place place : set) {
+            List<Transition> transitionList = place.getOut();
+            for (Transition transition : transitionList) {
+                if (transition.isAvailable(set)) {
+                    toExecute.add(transition);
+                }
+            }
+        }
+        return new ArrayList<Transition>(toExecute);
+    }
+
     private void checkForSafety() {
-//        List<PetriNet> variants = new ArrayList<PetriNet>();
         for (String[] sequence : sequences) {
-//            PetriNet net = new PetriNet(this);
             Place errorPlace = checkSequence(sequence);
             while (errorPlace != null) {
                 deletePlace(errorPlace);
                 errorPlace = checkSequence(sequence);
             }
-//            variants.add(net);
         }
     }
 
@@ -167,9 +187,6 @@ public class PetriNet {
                     for (int i = 0; i < placeList.size(); i++) {
                         for (int j = 0; j < placeList.size() && i != j; j++) {
                             if (placeList.get(i).include(placeList.get(j))) {  //проверитть входит ли кто еще!!!
-                                //проверить если такой лог
-                                //deletePlace(placeList.get(i));
-                                //break;
                                 deleteIndexes.add(j);
                             }
                         }
@@ -180,52 +197,6 @@ public class PetriNet {
                 }
             }
         }
-//        if (transitions.size() > 7) { //слишком много переходов из старта, надо убрать
-//            Set<String> names = new HashSet<String>();
-//            for (String[] sequence : sequences) {
-//                names.add(sequence[1]); //добавляем только корректные переходы
-//            }
-//            List<Transition> startTrans = start.getOut();
-//            for (Transition transition : startTrans) {
-//                List<Place> listPlace = transition.getTo();
-//                for (Place place : listPlace) {
-//                    List<Transition> nextTrans = place.getOut();
-//                    for (Transition next : nextTrans) {
-//                        if (!names.contains(next.getName())) {
-//                            if (place.getOut().size() == 1 && place.getIn().size() == 1) {
-//                                deletePlace(place);
-//                            }
-////                            else {
-////                            place.removeTransition(transition);
-////                            transition.removePlace(place);
-//                        }
-//                    }
-//                }
-//            }
-//        }
-    }
-
-    private List<Transition> getTransitionsToExecute(Set<Place> set) {
-        Set<Transition> toExecute = new HashSet<Transition>();
-        for (Place place : set) {
-            List<Transition> transitionList = place.getOut();
-            for (Transition transition : transitionList) {
-                if (transition.isAvailable(set)) {
-                    toExecute.add(transition);
-                }
-            }
-        }
-        return new ArrayList<Transition>(toExecute);
-    }
-
-    private void deletePlace(Place place) {
-        for (Transition transition : place.getIn()) {
-            transition.removePlace(place);
-        }
-        for (Transition transition : place.getOut()) {
-            transition.removePlace(place);
-        }
-        places.remove(place);
     }
 
     /**
@@ -246,16 +217,138 @@ public class PetriNet {
         return transition;
     }
 
-    public void addSequence(String sequence) {
-        sequences.add(sequence.split(";"));
+    public DOMSource getXml() throws ParserConfigurationException {
+        DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+
+        //root elements
+        Document doc = docBuilder.newDocument();
+
+        Element rootElement = doc.createElement("document");
+        doc.appendChild(rootElement);
+        rootElement.appendChild(doc.createElement("id"));
+        rootElement.appendChild(doc.createElement("x"));
+        rootElement.appendChild(doc.createElement("y"));
+        rootElement.appendChild(doc.createElement("label"));
+
+        //subnet global
+        rootElement.appendChild(createSubnet(doc));
+
+        rootElement.appendChild(doc.createElement("roles"));
+        return new DOMSource(doc);
     }
 
-    public int getNumOfActivities() {
-        Set<String> set = new HashSet<String>();
-        for (String[] arr : sequences) {
-            Collections.addAll(set, arr);
+    private Element createSubnet(Document doc) {
+        Element subnet = doc.createElement("subnet");
+        subnet.appendChild(doc.createElement("id"));
+        Element sx = doc.createElement("x");
+        sx.appendChild(doc.createTextNode("0"));
+        subnet.appendChild(sx);
+        Element sy = doc.createElement("y");
+        sy.appendChild(doc.createTextNode("0"));
+        subnet.appendChild(sy);
+        List<Element> list = getQueue(doc, new HashSet<Place>(){{ add(start); }}, new HashSet<Transition>(), 0);
+        for (Element element : list) {
+            subnet.appendChild(element);
         }
-        return set.size();
+        subnet.appendChild(doc.createElement("label"));
+        return subnet;
+    }
+
+    private List<Element> getQueue(Document doc, Set<Place> set, Set<Transition> used, int x) {
+        List<Element> elements = new ArrayList<Element>();
+
+        Set<Place> newSet = new HashSet<Place>();
+        int y = 0;
+        int yy = 0;
+        for (Place place : set) {
+            elements.add(getXmlPlace(doc, place, x, y++));
+            for (Transition transition : place.getOut()) {
+                if (!used.contains(transition)) {
+                    elements.add(getXmlTransition(doc, transition, x, yy++));
+                    used.add(transition);
+                    for (Place next : transition.getTo()) {
+                        newSet.add(next);
+                    }
+                    elements.addAll(getXmlArcs(doc, transition));
+                }
+               //elements.add(getXmlArc(doc, Integer.parseInt(place.getName().split("p")[1]), transition.hashCode()));
+            }
+        }
+        if (newSet.isEmpty()) {
+            return elements;
+        } else {
+            elements.addAll(getQueue(doc, newSet, used, x+1));
+            return elements;
+        }
+    }
+
+    private Element getXmlPlace(Document doc, Place place, int x, int y) {
+        Element placeElem = doc.createElement("place");
+        Element id = doc.createElement("id");
+        id.appendChild(doc.createTextNode(String.valueOf(place.getName().split("p")[1])));
+        placeElem.appendChild(id);
+        Element xel = doc.createElement("x");
+        xel.appendChild(doc.createTextNode(String.valueOf(x * 100)));
+        placeElem.appendChild(xel);
+        Element yel = doc.createElement("y");
+        yel.appendChild(doc.createTextNode(String.valueOf(y * 100)));
+        placeElem.appendChild(yel);
+        placeElem.appendChild(doc.createElement("label"));
+        Element tokens = doc.createElement("tokens");
+        if (x == 0) {
+            tokens.appendChild(doc.createTextNode("1"));
+        } else {
+            tokens.appendChild(doc.createTextNode("0"));
+        }
+        placeElem.appendChild(tokens);
+        Element isstatic = doc.createElement("isStatic");
+        isstatic.appendChild(doc.createTextNode("false"));
+        placeElem.appendChild(isstatic);
+        return placeElem;
+    }
+
+    private Element getXmlTransition(Document doc, Transition transition, int x, int y) {
+        Element transElem = doc.createElement("transition");
+        Element id = doc.createElement("id");
+        id.appendChild(doc.createTextNode(String.valueOf(transition.hashCode())));
+        transElem.appendChild(id);
+        Element xel = doc.createElement("x");
+        xel.appendChild(doc.createTextNode(String.valueOf(x * 100 + 50)));
+        transElem.appendChild(xel);
+        Element yel = doc.createElement("y");
+        yel.appendChild(doc.createTextNode(String.valueOf(y * 100)));
+        transElem.appendChild(yel);
+        transElem.appendChild(doc.createElement("label"));
+        return transElem;
+    }
+
+    private List<Element> getXmlArcs(Document doc, Transition transition){
+        List<Element> elements = new ArrayList<Element>();
+        for (Place place : transition.getFrom()) {
+            elements.add(getXmlArc(doc, Integer.parseInt(place.getName().split("p")[1]), transition.hashCode()));
+        }
+        for (Place place : transition.getTo()) {
+            elements.add(getXmlArc(doc, transition.hashCode(), Integer.parseInt(place.getName().split("p")[1])));
+        }
+        return elements;
+    }
+
+    private Element getXmlArc(Document doc, int xid, int yid){
+        Element arc = doc.createElement("arc");
+        Element type = doc.createElement("type");
+        type.appendChild(doc.createTextNode("regular"));
+        arc.appendChild(type);
+        Element sid = doc.createElement("sourceId");
+        sid.appendChild(doc.createTextNode(String.valueOf(xid)));
+        arc.appendChild(sid);
+        Element did = doc.createElement("destinationId");
+        did.appendChild(doc.createTextNode(String.valueOf(yid)));
+        arc.appendChild(did);
+        Element mult = doc.createElement("multiplicity");
+        mult.appendChild(doc.createTextNode("1"));
+        arc.appendChild(mult);
+        return arc;
     }
 
     @Override
@@ -269,27 +362,14 @@ public class PetriNet {
         }
         return res;
     }
-//
-//    @Override
-//    public Object clone() {
-//
-//    }
 
-    static class Transition{
+    static class Transition {
         private List<Place> from = new ArrayList<Place>();
         private List<Place> to = new ArrayList<Place>();
         private String name;
 
         public Transition(String name) {
             this.name = name;
-        }
-
-        public void addFrom(Place place) {
-            from.add(place);
-        }
-
-        public void addTo(Place place) {
-            to.add(place);
         }
 
         public String getName() {
@@ -304,6 +384,13 @@ public class PetriNet {
             return new ArrayList<Place>(from);
         }
 
+        public void addTo(Place place) {
+            to.add(place);
+        }
+
+        public void addFrom(Place place) {
+            from.add(place);
+        }
 
         public boolean removePlace(Place toDelete) {
             return from.remove(toDelete) || to.remove(toDelete);
@@ -314,6 +401,8 @@ public class PetriNet {
             prev.removeAll(query);
             return prev.isEmpty();
         }
+
+
 
         @Override
         public boolean equals(Object obj) {
@@ -347,8 +436,21 @@ public class PetriNet {
         private List<Transition> in = new ArrayList<Transition>();
         private List<Transition> out = new ArrayList<Transition>();
         private String name;
+
         public Place() {
             name = "p" + nameCounter++;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public List<Transition> getIn() {
+            return new ArrayList<Transition>(in);
+        }
+
+        public List<Transition> getOut() {
+            return new ArrayList<Transition>(out);
         }
 
         public void addIn(Transition transition) {
@@ -361,12 +463,8 @@ public class PetriNet {
             transition.addFrom(this);
         }
 
-        public List<Transition> getIn() {
-            return new ArrayList<Transition>(in);
-        }
-
-        public List<Transition> getOut() {
-            return new ArrayList<Transition>(out);
+        public boolean include(Place place) {
+            return in.containsAll(place.getIn()) && out.containsAll(place.getOut());
         }
 
         @Override
@@ -399,18 +497,6 @@ public class PetriNet {
         @Override
         public int hashCode() {
             return super.hashCode();
-        }
-
-        public boolean removeTransition(Transition toDelete) {
-            return in.remove(toDelete) || out.remove(toDelete);
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public boolean include(Place place) {
-            return in.containsAll(place.getIn()) && out.containsAll(place.getOut());
         }
     }
 }

@@ -33,115 +33,97 @@ public class SolutionsMapper extends MapReduceBase
         for (int i = 0; i < strarr.length; i++) {
             arr[i] = Integer.parseInt(strarr[i]);
         }
-        //for (int[] arr : result.getSolutions()) {
-            if (Methods.sumOfArrElem(arr) > 1 /*&& Methods.sumOfArrElem(arr) <= length*/) { //there max length of possible log
-                if (arr[0] != 1) { //Условие 1. Ограничение на стартовый регион
-                    //Condition 2. Usual place must contain in (x) and out (y) transitions
-                    List<Integer> enabledActivitiesIndexes = Methods.getIndexesOfOnes(arr);
-                    List<String> enabledActivitiesNames = new ArrayList<String>();
-                    String activity = workActivities.get(enabledActivitiesIndexes.get(0));
-                    int check = activity.startsWith("x")?1:2;
+
+        if (Methods.sumOfArrElem(arr) > 1) { //there max length of possible log
+            if (arr[0] != 1) { //Условие 1. Ограничение на стартовый регион
+                //Condition 2. Usual place must contain in (x) and out (y) transitions
+                List<Integer> enabledActivitiesIndexes = Methods.getIndexesOfOnes(arr);
+                List<String> enabledActivitiesNames = new ArrayList<String>();
+                String activity = workActivities.get(enabledActivitiesIndexes.get(0));
+                int check = activity.startsWith("x")?1:2;
+                enabledActivitiesNames.add(activity);
+                for (int i = 1; i < enabledActivitiesIndexes.size(); i++) {
+                    activity = workActivities.get(enabledActivitiesIndexes.get(i));
                     enabledActivitiesNames.add(activity);
-                    for (int i = 1; i < enabledActivitiesIndexes.size(); i++) {
-                        activity = workActivities.get(enabledActivitiesIndexes.get(i));
-                        enabledActivitiesNames.add(activity);
-                        if ((activity.startsWith("x") && check != 1) || (activity.startsWith("y") && check != 2)) {
-                            check = 0;
-//                            break;
-                        }
-                    }
-                    if (check != 0) {
-                        return;
-                    }
-                    //Условие 3. Принадлежат одному логу
-                    if (enabledActivitiesNames.contains("xc") && enabledActivitiesNames.contains("xb") && enabledActivitiesNames.contains("ye")
-                            && enabledActivitiesNames.size() == 3) {
-                        System.out.print('1');
-                    }
-
-//                    Set<LogCase> parents = result.getParents();
-                    MultiValueMap map = new MultiValueMap();
-                    MultiValueMap mapNames = new MultiValueMap();
-//                    HashMap<String, ArrayList<int[]>> map = new HashMap<String, ArrayList<int[]>>();
-                    boolean equals = false;
-                    boolean redundance = false;
-                    Collections.sort(enabledActivitiesNames);
-//                    for (LogCase parent : parents) {
-                    for (int key : parentMap.keySet()) {
-
-
-                        //List<String> parAct = new ArrayList<String>(parent.getActivities());
-                        List<String> parAct = parentMap.get(key);
-                        parAct.retainAll(enabledActivitiesNames);
-//                        Collections.sort(enabledActivitiesNames);
-                        if (parAct.equals(enabledActivitiesNames)) { //полное совпадение
-                            equals = true;
-                            List<Integer> indexes = new ArrayList<Integer>();
-                            for (String act : parAct) {
-                                indexes.add(parentMap.get(key).indexOf(act));
-                            }
-                            //проверка на длину лога (если длинный, то удалим переход между не соседними активити)
-                            redundance = maxNumOfActivities >= 6 && Collections.max(indexes) - Collections.min(indexes) > 1;
-                            break;
-                        } else {
-                            if (parAct.size() > 0) {  //частичное совпадение
-                                for (String act : parAct) {
-                                    map.put(key, new Object[] {act, parentMap.get(key).indexOf(act)}); //Добавляем id и index
-                                    mapNames.put(act, key);
-                                }
-                            }
-                        }
-                    }
-                    //Условие 4.  Логи имеют смежные активити  (???)
-                    if (!equals) { //проверка на активити нужна? (x_ или y_)
-                        boolean adjacent = true;
-                        //int max = 0;
-                        //int min = Integer.MAX_VALUE;
-                        //int i = 0;
-                        //int[] lengths = new int[map.size()];
-                        List<String> checkList = new ArrayList<String>(enabledActivitiesNames);
-                        for (Object key : map.keySet()) {
-                            List<Integer> indexes = new ArrayList<Integer>();
-                            List<String> names = new ArrayList<String>();
-                            for (Object value : map.getCollection(key)) {
-                                Object[] pair = (Object[]) value;
-                                indexes.add((Integer) pair[1]);
-                                names.add((String) pair[0]);
-                            }
-                            if (names.size() == 1/* && mapNames.getCollection(names.get(0)).size() > 1*/) {  //для примера 7
-                                boolean excess = false;
-                                for (Object id : mapNames.getCollection(names.get(0))) { //get ids
-                                    if (map.getCollection(id).size() > 1) {
-                                        excess = true;
-                                        break;
-                                    }
-                                }
-                                if (excess) continue;
-                            }
-                            checkList.retainAll(names);
-                            //lengths[i++] = indexes.size();
-                            if (/* indexes.size() < 2 || */(Collections.max(indexes) - Collections.min(indexes) > 1 )) { //недопустимый разрыв или длинна
-                                adjacent = false;
-                                break;
-                            }
-                            //max = Collections.max(indexes) > max ? Collections.max(indexes) : max;
-                            //min = Collections.min(indexes) < min ? Collections.min(indexes) : min;
-                        }
-//                        if (!adjacent || (max - min > 1)) continue;
-                        if (!adjacent || checkList.isEmpty()) return;
-                    }
-                    if (!redundance) {
-                        StringBuffer buff = new StringBuffer();
-                        for (String str : enabledActivitiesNames) {
-                            buff.append(str);
-                            buff.append(" ");
-                        }
-                        output.collect(new IntWritable(0), new Text(buff.toString()));
-                        //net.addPlace(enabledActivitiesNames);
+                    if ((activity.startsWith("x") && check != 1) || (activity.startsWith("y") && check != 2)) {
+                        check = 0;
                     }
                 }
+                if (check != 0) {
+                    return;
+                }
+                //Условие 3. Принадлежат одному логу
+                if (enabledActivitiesNames.contains("xc") && enabledActivitiesNames.contains("xb") && enabledActivitiesNames.contains("ye")
+                        && enabledActivitiesNames.size() == 3) {
+                    System.out.print('1');
+                }
+
+                MultiValueMap map = new MultiValueMap();
+                MultiValueMap mapNames = new MultiValueMap();
+                boolean equals = false;
+                boolean redundance = false;
+                Collections.sort(enabledActivitiesNames);
+                for (int key : parentMap.keySet()) {
+                    List<String> parAct = new ArrayList<String>(parentMap.get(key));
+                    parAct.retainAll(enabledActivitiesNames);
+                    if (parAct.equals(enabledActivitiesNames)) { //полное совпадение
+                        equals = true;
+                        List<Integer> indexes = new ArrayList<Integer>();
+                        for (String act : parAct) {
+                            indexes.add(parentMap.get(key).indexOf(act));
+                        }
+                        //проверка на длину лога (если длинный, то удалим переход между не соседними активити)
+                        redundance = maxNumOfActivities >= 6 && Collections.max(indexes) - Collections.min(indexes) > 1;
+                        break;
+                    } else {
+                        if (parAct.size() > 0) {  //частичное совпадение
+                            for (String act : parAct) {
+                                map.put(key, new Object[] {act, parentMap.get(key).indexOf(act)}); //Добавляем id и index
+                                mapNames.put(act, key);
+                            }
+                        }
+                    }
+                }
+                //Условие 4.  Логи имеют смежные активити
+                if (!equals) {
+                    boolean adjacent = true;
+                    List<String> checkList = new ArrayList<String>(enabledActivitiesNames);
+                    for (Object key : map.keySet()) {
+                        List<Integer> indexes = new ArrayList<Integer>();
+                        List<String> names = new ArrayList<String>();
+                        for (Object value : map.getCollection(key)) {
+                            Object[] pair = (Object[]) value;
+                            indexes.add((Integer) pair[1]);
+                            names.add((String) pair[0]);
+                        }
+                        if (names.size() == 1) {
+                            boolean excess = false;
+                            for (Object id : mapNames.getCollection(names.get(0))) { //get ids
+                                if (map.getCollection(id).size() > 1) {
+                                    excess = true;
+                                    break;
+                                }
+                            }
+                            if (excess) continue;
+                        }
+                        checkList.retainAll(names);
+                        if (Collections.max(indexes) - Collections.min(indexes) > 1 ) { //недопустимый разрыв или длинна
+                            adjacent = false;
+                            break;
+                        }
+                    }
+                    if (!adjacent || checkList.isEmpty()) return;
+                }
+                if (!redundance) {
+                    StringBuffer buff = new StringBuffer();
+                    for (String str : enabledActivitiesNames) {
+                        buff.append(str);
+                        buff.append(" ");
+                    }
+                    output.collect(new IntWritable(0), new Text(buff.toString()));
+                }
             }
-//        }
+        }
     }
 
     @Override
