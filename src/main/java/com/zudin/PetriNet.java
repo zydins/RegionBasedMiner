@@ -247,7 +247,7 @@ public class PetriNet {
         Element sy = doc.createElement("y");
         sy.appendChild(doc.createTextNode("0"));
         subnet.appendChild(sy);
-        List<Element> list = getQueue(doc, new HashSet<Place>(){{ add(start); }}, new HashSet<Transition>(), 0);
+        List<Element> list = getQueue(doc, new HashSet<Place>(){{ add(start); }}, new HashSet<Transition>(), new HashSet<Place>(), 0);
         for (Element element : list) {
             subnet.appendChild(element);
         }
@@ -255,30 +255,32 @@ public class PetriNet {
         return subnet;
     }
 
-    private List<Element> getQueue(Document doc, Set<Place> set, Set<Transition> used, int x) {
+    private List<Element> getQueue(Document doc, Set<Place> set, Set<Transition> usedTrans, Set<Place> usedPlaces, int x) {
         List<Element> elements = new ArrayList<Element>();
 
         Set<Place> newSet = new HashSet<Place>();
         int y = 0;
         int yy = 0;
         for (Place place : set) {
-            elements.add(getXmlPlace(doc, place, x, y++));
-            for (Transition transition : place.getOut()) {
-                if (!used.contains(transition)) {
-                    elements.add(getXmlTransition(doc, transition, x, yy++));
-                    used.add(transition);
-                    for (Place next : transition.getTo()) {
-                        newSet.add(next);
+            if (!usedPlaces.contains(place)){
+                elements.add(getXmlPlace(doc, place, x, y++));
+                usedPlaces.add(place);
+                for (Transition transition : place.getOut()) {
+                    if (!usedTrans.contains(transition)) {
+                        elements.add(getXmlTransition(doc, transition, x, yy++));
+                        usedTrans.add(transition);
+                        for (Place next : transition.getTo()) {
+                            newSet.add(next);
+                        }
+                        elements.addAll(getXmlArcs(doc, transition));
                     }
-                    elements.addAll(getXmlArcs(doc, transition));
                 }
-               //elements.add(getXmlArc(doc, Integer.parseInt(place.getName().split("p")[1]), transition.hashCode()));
             }
         }
         if (newSet.isEmpty()) {
             return elements;
         } else {
-            elements.addAll(getQueue(doc, newSet, used, x+1));
+            elements.addAll(getQueue(doc, newSet, usedTrans, usedPlaces, x+1));
             return elements;
         }
     }

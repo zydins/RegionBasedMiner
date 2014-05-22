@@ -1,16 +1,15 @@
 package com.zudin;
 
-import org.apache.commons.collections.map.MultiValueMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 //import org.apache.hadoop.mapreduce.Job;
 //import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 //import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapred.*;
+import sun.dc.path.PathException;
 
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
@@ -29,7 +28,31 @@ public class RegionBasedMiner {
     private static String inputLogPath = "";
     private static String outputLogPath = "";
 
-    public static void main(String... args) throws Exception {
+    /**
+     * Test executor
+     * @param args paths to files
+     */
+    public static void main(String... args) {
+        try {
+            net = run(args);
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = net.getXml();
+            StreamResult streamResult = new StreamResult(new File("/Users/vaultboy/text.pflow"));
+            transformer.transform(source, streamResult);
+        } catch (Exception e) {
+            System.exit(0);
+        }
+    }
+
+    /**
+     * Runs Region-based Miner and returns Petri net
+     * @param args paths to files
+     * @return Petri net
+     * @throws IOException when errors with write/read is occurred
+     * @throws PathException when path to input file is incorrect
+     */
+    public static PetriNet run(String... args) throws IOException, PathException {
         FileSystem fs = FileSystem.get(new Configuration());
         readLogs(fs, args);
         LogCase result = cases.get(0).mergeSolutions(cases.get(1));
@@ -50,14 +73,16 @@ public class RegionBasedMiner {
         net.makeSafe();
         System.out.println(net);
         writeResults(fs, net);
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        DOMSource source = net.getXml();
-        StreamResult streamResult = new StreamResult(new File("/Users/vaultboy/text.pflow"));
-        transformer.transform(source, streamResult);
+        return net;
     }
 
-    private static JobConf runLogParseJob(Path inputPath, Path outputPath) {
+    /**
+     * Creates a Mapreduce job that parses input file to log queues
+     * @param inputPath path to an input file
+     * @param outputPath path where results will be saved
+     * @return Job that will parse an input file
+     */
+    private static JobConf getLogParseJob(Path inputPath, Path outputPath) {
         JobConf job = new JobConf();
         job.setJarByClass(RegionBasedMiner.class);
         job.setJobName("RBM Log Parser");
@@ -70,6 +95,13 @@ public class RegionBasedMiner {
         return job;
     }
 
+    /**
+     * Creates a Mapreduce job that checks each activity list and adds it (if it is correct) as place in the Petri net
+     * @param inputPath path to an file with lists
+     * @param outputPath path where results will be saved
+     * @param activities all possible activities
+     * @return Job that will check activity lists
+     */
     private static JobConf runActivitiesCheckJob(Path inputPath, Path outputPath, String activities) {
         JobConf job = new JobConf();
         job.setJarByClass(RegionBasedMiner.class);
@@ -86,6 +118,11 @@ public class RegionBasedMiner {
         return job;
     }
 
+    /**
+     *
+     * @param fs
+     * @throws IOException
+     */
     private static void readCorrectPlaces(FileSystem fs) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(fs.open(new Path(outputLogPath + "/actcheck/part-00000"))));
         String line;
@@ -98,13 +135,13 @@ public class RegionBasedMiner {
         reader.close();
     }
 
-    private static void readLogs(FileSystem fs, String[] args) throws IOException {
+    private static void readLogs(FileSystem fs, String[] args) throws IOException, PathException {
         if (args.length == 0) {
             System.out.println("[ERROR] Paths isn't set.\n" +
                     "Example of using: hadoop jar RBM.jar input [output]\n" +
                     "\tinput - input path (/logs/temp.log)\n" +
                     "\toutput - output path (/results/temp1.txt)");
-            System.exit(1);
+            throw new PathException("Paths isn't set");
         }
 
         if (args.length == 1) {
@@ -121,14 +158,14 @@ public class RegionBasedMiner {
         Path output = new Path(outputLogPath);
         if (!fs.exists(input)) {
             System.out.println("[ERROR] Input file (" + inputLogPath + ") doesn't exist");
-            System.exit(1);
+            throw new PathException("Input file (" + inputLogPath + ") doesn't exist");
         }
         if (fs.exists(output)) {
             outputLogPath = "/RBM_results/run" + System.currentTimeMillis() + "";
-            System.out.println("[WARN] Output directory already exist. Results will be saved in " + outputLogPath + "\"");
+            System.out.println("[WARNING] Output directory already exist. Results will be saved in " + outputLogPath + "\"");
         }
 
-        JobClient.runJob(runLogParseJob(input, new Path(outputLogPath + "/logparse")));
+        JobClient.runJob(getLogParseJob(input, new Path(outputLogPath + "/logparse")));
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(fs.open(new Path(outputLogPath + "/logparse/part-00000"))));
         String line;
